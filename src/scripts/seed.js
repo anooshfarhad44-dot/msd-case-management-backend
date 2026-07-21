@@ -76,22 +76,27 @@ const seed = async () => {
   console.log("✅ Connected to MongoDB\n");
 
   let created = 0;
-  let skipped = 0;
+  let updated = 0;
 
   for (const userData of seedUsers) {
-    const existing = await User.findOne({ email: userData.email });
-    if (existing) {
-      console.log(`⏭  Skipped (already exists): ${userData.email}`);
-      skipped++;
-      continue;
+    let user = await User.findOne({ email: userData.email });
+
+    if (user) {
+      // Existing user update karo (save() call karne se bcrypt password hashing hook trigger hoga)
+      Object.assign(user, userData);
+      await user.save();
+      console.log(`🔄 Updated  [${userData.role.padEnd(11)}]  ${userData.name.padEnd(20)}  ${userData.email}`);
+      updated++;
+    } else {
+      // New user create karo
+      await User.create(userData);
+      console.log(`✅ Created  [${userData.role.padEnd(11)}]  ${userData.name.padEnd(20)}  ${userData.email}`);
+      created++;
     }
-    await User.create(userData);
-    console.log(`✅ Created  [${userData.role.padEnd(11)}]  ${userData.name.padEnd(20)}  ${userData.email}`);
-    created++;
   }
 
   console.log(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-  console.log(`📋 Seed complete: ${created} created, ${skipped} skipped`);
+  console.log(`📋 Seed complete: ${created} created, ${updated} updated`);
   console.log(`🔑 Password for all users: ${SEED_PASSWORD}`);
   console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
   console.log(`Role         Email`);
