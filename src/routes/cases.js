@@ -7,8 +7,8 @@ router.use(authenticate);
 
 router.get("/",                      getCases);
 router.get("/:id",                   getCaseById);
-router.post("/",                     authorize("director","admin","supervisor"), createCase);
-router.patch("/:id",                 authorize("director","admin","supervisor","fee_earner"), updateCase);
+router.post("/",                     authorize("director","admin","supervisor","fee_earner"), createCase);
+router.patch("/:id",                 authorize("director","admin","supervisor","fee_earner","paralegal"), updateCase);
 router.post("/:id/notes",            addNote);
 router.post("/:id/supervision",      authorize("director","supervisor","compliance"), recordSupervision);
 

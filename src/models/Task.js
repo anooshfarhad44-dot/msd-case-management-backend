@@ -27,6 +27,9 @@ const taskSchema = new mongoose.Schema(
     },
 
     isRecurring:       { type: Boolean, default: false },
+  previousStatus:    { type: String, enum: ["todo","in_progress","completed","overdue","cancelled"], default: null },
+  escalationLevel:  { type: Number, default: 0 },
+  lastEscalatedAt:  { type: Date },
     recurringInterval: { type: String, enum: ["daily", "weekly", "monthly", "quarterly"] },
   },
   { timestamps: true }

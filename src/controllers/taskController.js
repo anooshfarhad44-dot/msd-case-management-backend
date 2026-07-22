@@ -1,9 +1,13 @@
 const Task = require("../models/Task");
 const { createAuditLog } = require("../utils/audit");
+const { runTaskEscalation } = require("../services/taskEscalation");
 
 // GET /api/tasks
 const getTasks = async (req, res, next) => {
   try {
+    // Run escalation check on task fetch
+    await runTaskEscalation();
+
     const { status, assignedTo, caseId, priority } = req.query;
     const filter = {};
 
@@ -36,6 +40,9 @@ const getTasks = async (req, res, next) => {
         category:       t.category,
         dueDate:        t.dueDate,
         completedAt:    t.completedAt,
+        previousStatus: t.previousStatus,
+        escalationLevel: t.escalationLevel || 0,
+        lastEscalatedAt: t.lastEscalatedAt,
         createdAt:      t.createdAt,
       })),
     });
@@ -84,4 +91,36 @@ const deleteTask = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-module.exports = { getTasks, createTask, updateTask, deleteTask };
+// POST /api/tasks/:id/reopen
+const reopenTask = async (req, res, next) => {
+  try {
+    const task = await Task.findById(req.params.id);
+    if (!task) return res.status(404).json({ success: false, message: "Task not found" });
+    if (!["completed","cancelled"].includes(task.status)) {
+      return res.status(400).json({ success: false, message: "Only completed or cancelled tasks can be reopened" });
+    }
+    // Preserve previous status for audit
+    task.previousStatus = task.status;
+    task.status = "todo";
+    task.completedAt = undefined;
+    await task.save();
+    await createAuditLog(req, "UPDATE", "Task", task._id, `Task reopened: ${task.title}`);
+    // Add timeline entry to related matter if exists
+    if (task.caseId) {
+      const Matter = require('../models/Matter');
+      const matter = await Matter.findById(task.caseId);
+      if (matter) {
+        matter.timeline.push({
+          type: "audit",
+          description: `Task reopened: ${task.title}` ,
+          createdBy: req.user.userId,
+          isAudit: true,
+        });
+        await matter.save();
+      }
+    }
+    res.json({ success: true, task: task });
+  } catch (err) { next(err); }
+};
+
+module.exports = { getTasks, createTask, updateTask, deleteTask, reopenTask };

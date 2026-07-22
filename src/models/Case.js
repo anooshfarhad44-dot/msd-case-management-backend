@@ -31,6 +31,7 @@ const caseSchema = new mongoose.Schema(
     reference: { type: String, unique: true, trim: true },
 
     // ── Relationships ─────────────────────────────────────────────────────────
+    matterId:     { type: mongoose.Schema.Types.ObjectId, ref: "Matter" },  // optional parent matter
     clientId:     { type: mongoose.Schema.Types.ObjectId, ref: "Client", required: true },
     assignedTo:   { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     supervisedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },

@@ -6,15 +6,22 @@ const cookieParser = require("cookie-parser");
 const rateLimit    = require("express-rate-limit");
 const path         = require("path");
 
-const authRoutes       = require("./routes/auth");
-const userRoutes       = require("./routes/users");
-const clientRoutes     = require("./routes/clients");
-const caseRoutes       = require("./routes/cases");
-const taskRoutes       = require("./routes/tasks");
-const invoiceRoutes    = require("./routes/invoices");
-const leadRoutes       = require("./routes/leads");
-const documentRoutes   = require("./routes/documents");
-const complianceRoutes = require("./routes/compliance");
+const authRoutes        = require("./routes/auth");
+const userRoutes        = require("./routes/users");
+const clientRoutes      = require("./routes/clients");
+const matterRoutes      = require("./routes/matters");
+const matterTemplateRoutes = require("./routes/matterTemplates");
+const caseRoutes        = require("./routes/cases");
+const taskRoutes        = require("./routes/tasks");
+const invoiceRoutes     = require("./routes/invoices");
+const leadRoutes        = require("./routes/leads");
+const documentRoutes    = require("./routes/documents");
+const complianceRoutes  = require("./routes/compliance");
+const matterPartyRoutes = require("./routes/matterParties");
+const noteRoutes        = require("./routes/notes");
+const communicationRoutes = require("./routes/communications");
+const timeExpenseRoutes   = require("./routes/time-expenses");
+const calendarRoutes      = require("./routes/calendar");
 const { errorHandler, notFound } = require("./middleware/errorHandler");
 
 const app = express();
@@ -62,15 +69,22 @@ app.get("/api/health", (req, res) => {
 });
 
 // ─── Routes ───────────────────────────────────────────────────────────────────
-app.use("/api/auth",       authLimiter, authRoutes);
-app.use("/api/users",      userRoutes);
-app.use("/api/clients",    clientRoutes);
-app.use("/api/cases",      caseRoutes);
-app.use("/api/tasks",      taskRoutes);
-app.use("/api/invoices",   invoiceRoutes);
-app.use("/api/leads",      leadRoutes);
-app.use("/api/documents",  documentRoutes);
-app.use("/api/compliance", complianceRoutes);
+app.use("/api/auth",            authLimiter, authRoutes);
+app.use("/api/users",           userRoutes);
+app.use("/api/clients",         clientRoutes);
+app.use("/api/matters",         matterRoutes);
+app.use("/api/matter-templates", matterTemplateRoutes);
+app.use("/api/cases",           caseRoutes);
+app.use("/api/cases/:caseId/parties", matterPartyRoutes);
+app.use("/api/tasks",           taskRoutes);
+app.use("/api/invoices",        invoiceRoutes);
+app.use("/api/leads",           leadRoutes);
+app.use("/api/documents",       documentRoutes);
+app.use("/api/compliance",      complianceRoutes);
+app.use("/api/notes",           noteRoutes);
+app.use("/api/communications",  communicationRoutes);
+app.use("/api/time-expenses",   timeExpenseRoutes);
+app.use("/api/calendar",        calendarRoutes);
 
 // ─── Error handling ───────────────────────────────────────────────────────────
 app.use(notFound);

@@ -1,6 +1,9 @@
 const User = require("../models/User");
 
-const VALID_ROLES = ["director", "admin", "supervisor", "fee_earner", "compliance", "sales", "client"];
+const VALID_ROLES = [
+  "director", "compliance", "supervisor", "fee_earner",
+  "paralegal", "sales", "finance", "admin", "consultant", "client",
+];
 
 // GET /api/users  (director, admin only)
 const getUsers = async (req, res, next) => {

@@ -25,7 +25,18 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ["director", "admin", "supervisor", "fee_earner", "compliance", "sales", "client"],
+      enum: [
+        "director",    // Managing Partner / Director
+        "compliance",  // COLP / Compliance Officer
+        "supervisor",  // Department Head / Supervisor
+        "fee_earner",  // Solicitor / Caseworker
+        "paralegal",   // Paralegal / Legal Assistant
+        "sales",       // Sales / Intake
+        "finance",     // Finance
+        "admin",       // Administrator
+        "consultant",  // External Consultant / Counsel
+        "client",      // Client / Portal User
+      ],
       required: [true, "Role is required"],
     },
     department: {
