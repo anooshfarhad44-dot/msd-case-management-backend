@@ -443,7 +443,6 @@
 
 
 
-
 const path = require("path");
 
 // Root directory se .env load kar rahe hain
@@ -547,33 +546,40 @@ const usersData = [
 ];
 
 async function seed() {
-  // .env se MONGODB_URI le raha hai, agar nah mile toh .env wali string default apply kar raha hai
   const mongoURI = process.env.MONGODB_URI || "mongodb://localhost:27017/msd-cms";
 
   console.log(`📡 Connecting to MongoDB at: ${mongoURI}`);
   await mongoose.connect(mongoURI);
   console.log("✅ MongoDB connected successfully!\n");
 
+  // ── 0. Clean Database ────────────────────────────────────────────────────────
+  console.log("🧹 Cleaning old database collections...");
+  await Promise.all([
+    User.deleteMany({}),
+    Client.deleteMany({}),
+    Case.deleteMany({}),
+    Task.deleteMany({}),
+    Invoice.deleteMany({}),
+    Lead.deleteMany({}),
+    Matter.deleteMany({}),
+    Document.deleteMany({}),
+    Note.deleteMany({}),
+  ]);
+  console.log("✨ Database successfully cleaned!\n");
+
   // ── 1. Users ────────────────────────────────────────────────────────────────
   console.log("━━━ Users ━━━");
   const users = {};
   for (const u of usersData) {
-    let user = await User.findOne({ email: u.email });
-    if (!user) {
-      user = await User.create({
-        name: u.name,
-        email: u.email,
-        password: SEED_PASSWORD,
-        role: u.role,
-        department: u.department,
-        phone: u.phone,
-      });
-      console.log(`✅ Created  [${u.role.padEnd(12)}] ${u.name}`);
-    } else {
-      user.role = u.role;
-      await user.save();
-      console.log(`🔄 Updated  [${u.role.padEnd(12)}] ${u.name}`);
-    }
+    const user = await User.create({
+      name: u.name,
+      email: u.email,
+      password: SEED_PASSWORD,
+      role: u.role,
+      department: u.department,
+      phone: u.phone,
+    });
+    console.log(`✅ Created  [${u.role.padEnd(12)}] ${u.name}`);
     users[u.role] = user;
   }
 
@@ -598,13 +604,8 @@ async function seed() {
 
   const clientMap = {};
   for (const c of clientsData) {
-    let client = await Client.findOne({ email: c.email });
-    if (!client) {
-      client = await Client.create({ ...c, createdBy: adminUser._id, portalActive: false, marketingConsent: true });
-      console.log(`✅ ${c.firstName} ${c.lastName}`);
-    } else {
-      console.log(`⏭  ${c.firstName} ${c.lastName} (exists)`);
-    }
+    const client = await Client.create({ ...c, createdBy: adminUser._id, portalActive: false, marketingConsent: true });
+    console.log(`✅ Created Client: ${c.firstName} ${c.lastName}`);
     clientMap[c.lastName.toLowerCase()] = client;
   }
 
@@ -728,26 +729,21 @@ async function seed() {
 
   const matterMap = {};
   for (const mData of mattersData) {
-    let mat = await Matter.findOne({ reference: mData.ref });
     const clientDoc = clientMap[mData.clientKey];
     if (!clientDoc) continue;
-    if (!mat) {
-      mat = await Matter.create({
-        ...mData,
-        clientId: clientDoc._id,
-        ownerId: fee_earner._id,
-        supervisorId: supervisor._id,
-        createdBy: adminUser._id,
-        openedAt: new Date(Date.now() - 20 * 86400000),
-        timeline: [
-          { type: "created", description: `Matter opened: ${mData.matterType}`, createdBy: adminUser._id, isAudit: true },
-          { type: "note", description: "Initial consultation notes recorded with client", createdBy: fee_earner._id, isAudit: false },
-        ]
-      });
-      console.log(`✅ Matter: ${mat.reference} (${mat.matterType})`);
-    } else {
-      console.log(`⏭  Matter: ${mat.reference} (exists)`);
-    }
+    const mat = await Matter.create({
+      ...mData,
+      clientId: clientDoc._id,
+      ownerId: fee_earner._id,
+      supervisorId: supervisor._id,
+      createdBy: adminUser._id,
+      openedAt: new Date(Date.now() - 20 * 86400000),
+      timeline: [
+        { type: "created", description: `Matter opened: ${mData.matterType}`, createdBy: adminUser._id, isAudit: true },
+        { type: "note", description: "Initial consultation notes recorded with client", createdBy: fee_earner._id, isAudit: false },
+      ]
+    });
+    console.log(`✅ Matter: ${mat.reference} (${mat.matterType})`);
     matterMap[mData.ref] = mat;
   }
 
@@ -766,26 +762,21 @@ async function seed() {
 
   const caseMap = {};
   for (const c of casesData) {
-    let cas = await Case.findOne({ reference: c.ref });
     const clientDoc = clientMap[c.client];
     if (!clientDoc) { console.log(`⚠  No client for ${c.ref}`); continue; }
-    if (!cas) {
-      cas = await Case.create({
-        reference: c.ref, clientId: clientDoc._id,
-        assignedTo: fee_earner._id, supervisedBy: supervisor._id, createdBy: adminUser._id,
-        type: c.type, stage: c.stage, status: c.status, risk: c.risk,
-        fee: c.fee, outstanding: c.outstanding,
-        keyDate: new Date(Date.now() + Math.random() * 60 * 86400000),
-        openedAt: new Date(Date.now() - Math.random() * 180 * 86400000),
-        conflictCheckDone: true, cddComplete: c.risk !== "high",
-        supervisionCadence: c.risk === "high" ? "monthly" : "6weekly",
-        nextSupervisionDate: new Date(Date.now() + 14 * 86400000),
-        tags: [c.type.split(" ")[0]],
-      });
-      console.log(`✅ ${c.ref}`);
-    } else {
-      console.log(`⏭  ${c.ref} (exists)`);
-    }
+    const cas = await Case.create({
+      reference: c.ref, clientId: clientDoc._id,
+      assignedTo: fee_earner._id, supervisedBy: supervisor._id, createdBy: adminUser._id,
+      type: c.type, stage: c.stage, status: c.status, risk: c.risk,
+      fee: c.fee, outstanding: c.outstanding,
+      keyDate: new Date(Date.now() + Math.random() * 60 * 86400000),
+      openedAt: new Date(Date.now() - Math.random() * 180 * 86400000),
+      conflictCheckDone: true, cddComplete: c.risk !== "high",
+      supervisionCadence: c.risk === "high" ? "monthly" : "6weekly",
+      nextSupervisionDate: new Date(Date.now() + 14 * 86400000),
+      tags: [c.type.split(" ")[0]],
+    });
+    console.log(`✅ Case: ${c.ref}`);
     caseMap[c.ref] = cas;
   }
 
@@ -802,16 +793,13 @@ async function seed() {
       { title: "Chase payment — Amina Rahim",   status: "todo",        priority: "medium", dueDate: "2026-07-30" },
     ];
     for (const t of tasksData) {
-      const exists = await Task.findOne({ title: t.title, caseId: firstCase._id });
-      if (!exists) {
-        await Task.create({
-          title: t.title, caseId: firstCase._id,
-          assignedTo: fee_earner._id, createdBy: adminUser._id,
-          status: t.status, priority: t.priority, dueDate: new Date(t.dueDate),
-          completedAt: t.status === "completed" ? new Date() : undefined,
-        });
-        console.log(`✅ Task: ${t.title}`);
-      }
+      await Task.create({
+        title: t.title, caseId: firstCase._id,
+        assignedTo: fee_earner._id, createdBy: adminUser._id,
+        status: t.status, priority: t.priority, dueDate: new Date(t.dueDate),
+        completedAt: t.status === "completed" ? new Date() : undefined,
+      });
+      console.log(`✅ Task: ${t.title}`);
     }
   }
 
@@ -820,18 +808,15 @@ async function seed() {
   const caseArr = Object.values(caseMap);
   for (let i = 0; i < Math.min(4, caseArr.length); i++) {
     const cas = caseArr[i];
-    const exists = await Invoice.findOne({ caseId: cas._id });
-    if (!exists) {
-      await Invoice.create({
-        caseId: cas._id, clientId: cas.clientId, createdBy: adminUser._id,
-        lines: [{ description: `${cas.type} — professional fees`, quantity: 1, unitPrice: cas.fee, total: cas.fee }],
-        subtotal: cas.fee, vatAmount: 0, total: cas.fee,
-        paid: cas.fee - cas.outstanding, outstanding: cas.outstanding,
-        status: cas.outstanding > 0 ? "partial" : "paid",
-        dueAt: new Date(Date.now() + 30 * 86400000),
-      });
-      console.log(`✅ Invoice for ${cas.reference}`);
-    }
+    await Invoice.create({
+      caseId: cas._id, clientId: cas.clientId, createdBy: adminUser._id,
+      lines: [{ description: `${cas.type} — professional fees`, quantity: 1, unitPrice: cas.fee, total: cas.fee }],
+      subtotal: cas.fee, vatAmount: 0, total: cas.fee,
+      paid: cas.fee - cas.outstanding, outstanding: cas.outstanding,
+      status: cas.outstanding > 0 ? "partial" : "paid",
+      dueAt: new Date(Date.now() + 30 * 86400000),
+    });
+    console.log(`✅ Invoice for ${cas.reference}`);
   }
 
   // ── 6. Leads ────────────────────────────────────────────────────────────────
@@ -847,23 +832,18 @@ async function seed() {
   const salesUser = users["sales"];
   for (const l of leadsData) {
     const email = `${l.firstName.toLowerCase()}.${l.lastName.toLowerCase()}@example.com`;
-    const exists = await Lead.findOne({ email });
-    if (!exists) {
-      await Lead.create({
-        ...l, email, phone: "+44 7900 " + Math.floor(200000 + Math.random() * 799999),
-        assignedTo: salesUser._id, createdBy: salesUser._id,
-        estimatedFee: Math.floor(1000 + Math.random() * 3000),
-      });
-      console.log(`✅ Lead: ${l.firstName} ${l.lastName} (${l.status})`);
-    } else {
-      console.log(`⏭  Lead: ${l.firstName} ${l.lastName} (exists)`);
-    }
+    await Lead.create({
+      ...l, email, phone: "+44 7900 " + Math.floor(200000 + Math.random() * 799999),
+      assignedTo: salesUser._id, createdBy: salesUser._id,
+      estimatedFee: Math.floor(1000 + Math.random() * 3000),
+    });
+    console.log(`✅ Lead: ${l.firstName} ${l.lastName} (${l.status})`);
   }
 
   // ── Summary ─────────────────────────────────────────────────────────────────
   console.log(`
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-✅ Seed complete — All 10 roles created
+✅ Seed complete — Database Cleaned & Fresh Data Re-seeded
 🔑 Password for ALL users: ${SEED_PASSWORD}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
